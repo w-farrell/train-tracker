@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 
 API_KEY = '32873f6871244285b19ea056b65a2d25'
-MAP_ID = '40380'
+
 
 
 
@@ -44,44 +44,49 @@ stations = [
     {'name': '95th/Dan Ryan', 'mapid': '40450'}
 ]
 
-def check_trains():
-    url_template = "https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key={}&mapid={}&outputType=JSON"
-    time_window = timedelta(minutes=2)  # Define a 2-minute window for accuracy
+def fetch_train_data():
+    url = f"https://lapi.transitchicago.com/api/1.0/ttpositions.aspx?key={API_KEY}&rt=red&outputType=JSON"
+    response = requests.get(url)
+    return response.json() if response.status_code == 200 else None
 
-    for station in stations:
-        url = url_template.format(API_KEY, station['mapid'])
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            train_at_station = False
-            train_just_left = False
+def get_train_locations():
+    data = fetch_train_data()
+    if data is None or 'ctatt' not in data or 'route' not in data['ctatt']:
+        print("Error fetching or parsing data")
+        return []
+
+    # Get the current time
+    current_time = datetime.now()
+
+    # List to store active train indicators
+    active_trains = []
+
+    # Extract train locations
+    for route in data['ctatt']['route']:
+        for train in route['train']:
+            if 'arrT' not in train or 'nextStaId' not in train:
+                print(f"Missing data in train entry: {train}")
+                continue
             
-            if 'ctatt' in data and 'eta' in data['ctatt']:
-                arrivals = data['ctatt']['eta']
-                current_time = datetime.now()
+            arrival_time = datetime.strptime(train['arrT'], "%Y-%m-%dT%H:%M:%S")
+            station_id = train['nextStaId']
 
-                for arrival in arrivals:
-                    arrival_time = datetime.strptime(arrival['arrT'], "%Y-%m-%dT%H:%M:%S")
-                    time_diff = arrival_time - current_time
-                    
-                    if timedelta(0) <= time_diff <= time_window:
-                        train_at_station = True
-                    elif -time_window <= time_diff < timedelta(0):
-                        train_just_left = True
+            # Check if the train is within a reasonable time frame
+            if arrival_time >= current_time:
+                active_trains.append(station_id)
 
-            if train_at_station:
-                print(f"Train is currently at {station['name']}")
-            elif train_just_left:
-                print(f"Train has just left {station['name']}")
-            else:
-                print(f"No train arrivals at {station['name']} at the moment.")
-        else:
-            print(f"Error fetching data for {station['name']}: {response.status_code}")
+    return active_trains
 
-        # Sleep to avoid hitting the API rate limit
-        time.sleep(1)
+def display_train_locations(stations):
+    active_trains = get_train_locations()
+    
+    # Limit the number of active indicators to the number of unique trains
+    unique_stations = list(set(active_trains))
+    
+    print("Active train indicators:")
+    for station_id in unique_stations:
+        station_name = next((station['name'] for station in stations if station['mapid'] == station_id), f"Unknown {station_id}")
+        print(f"Train at {station_name}")
 
-
-check_trains()
-
+# Run the function
+display_train_locations(stations)
