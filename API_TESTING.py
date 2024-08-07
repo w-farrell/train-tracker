@@ -1,6 +1,8 @@
 import requests
+from geopy.distance import great_circle
 import time
 from datetime import datetime, timedelta
+
 
 API_KEY = '32873f6871244285b19ea056b65a2d25'
 
@@ -8,85 +10,76 @@ API_KEY = '32873f6871244285b19ea056b65a2d25'
 
 
 stations = [
-    {'name': 'Howard', 'mapid': '40380'},
-    {'name': 'Jarvis', 'mapid': '40520'},
-    {'name': 'Morse', 'mapid': '41300'},
-    {'name': 'Loyola', 'mapid': '41200'},
-    {'name': 'Granville', 'mapid': '40760'},
-    {'name': 'Thorndale', 'mapid': '41160'},
-    {'name': 'Bryn Mawr', 'mapid': '40540'},
-    {'name': 'Berwyn', 'mapid': '41380'},
-    {'name': 'Argyle', 'mapid': '41240'},
-    {'name': 'Lawrence', 'mapid': '40770'},
-    {'name': 'Wilson', 'mapid': '40550'},
-    {'name': 'Sheridan', 'mapid': '40080'},
-    {'name': 'Addison', 'mapid': '41420'},
-    {'name': 'Belmont', 'mapid': '41220'},
-    {'name': 'Fullerton', 'mapid': '40650'},
-    {'name': 'North/Clybourn', 'mapid': '40630'},
-    {'name': 'Clark/Division', 'mapid': '40660'},
-    {'name': 'Chicago', 'mapid': '40640'},
-    {'name': 'Grand', 'mapid': '40490'},
-    {'name': 'Lake', 'mapid': '41660'},
-    {'name': 'Monroe', 'mapid': '41090'},
-    {'name': 'Jackson', 'mapid': '40560'},
-    {'name': 'Harrison', 'mapid': '40850'},
-    {'name': 'Roosevelt', 'mapid': '41400'},
-    {'name': 'Cermak-Chinatown', 'mapid': '41670'},
-    {'name': 'Sox-35th', 'mapid': '41130'},
-    {'name': '47th', 'mapid': '41230'},
-    {'name': '51st', 'mapid': '40050'},
-    {'name': 'Garfield', 'mapid': '40290'},
-    {'name': '63rd', 'mapid': '40910'},
-    {'name': '69th', 'mapid': '40990'},
-    {'name': '79th', 'mapid': '40240'},
-    {'name': '87th', 'mapid': '41450'},
-    {'name': '95th/Dan Ryan', 'mapid': '40450'}
+    {'name': '47th', 'lat': 41.810318, 'lon': -87.63094, 'parent_stop_id': 41230},
+    {'name': '63rd', 'lat': 41.780536, 'lon': -87.630952, 'parent_stop_id': 40910},
+    {'name': '69th', 'lat': 41.768367, 'lon': -87.625724, 'parent_stop_id': 40990},
+    {'name': '79th', 'lat': 41.750419, 'lon': -87.625112, 'parent_stop_id': 40240},
+    {'name': '87th', 'lat': 41.735372, 'lon': -87.624717, 'parent_stop_id': 41430},
+    {'name': '95th/Dan Ryan', 'lat': 41.722377, 'lon': -87.624342, 'parent_stop_id': 40450},
+    {'name': 'Addison', 'lat': 41.947428, 'lon': -87.653626, 'parent_stop_id': 41420},
+    {'name': 'Argyle', 'lat': 41.973453, 'lon': -87.65853, 'parent_stop_id': 41200},
+    {'name': 'Belmont', 'lat': 41.939751, 'lon': -87.65338, 'parent_stop_id': 41320},
+    {'name': 'Berwyn', 'lat': 41.977984, 'lon': -87.658668, 'parent_stop_id': 40340},
+    {'name': 'Bryn Mawr', 'lat': 41.983504, 'lon': -87.65884, 'parent_stop_id': 41380},
+    {'name': 'Cermak-Chinatown', 'lat': 41.853206, 'lon': -87.630968, 'parent_stop_id': 41000},
+    {'name': 'Chicago', 'lat': 41.896671, 'lon': -87.628176, 'parent_stop_id': 41450},
+    {'name': 'Clark/Division', 'lat': 41.90392, 'lon': -87.631412, 'parent_stop_id': 40630},
+    {'name': 'Fullerton', 'lat': 41.925051, 'lon': -87.652866, 'parent_stop_id': 41220},
+    {'name': 'Garfield', 'lat': 41.79542, 'lon': -87.631157, 'parent_stop_id': 41170},
+    {'name': 'Grand', 'lat': 41.891665, 'lon': -87.628021, 'parent_stop_id': 40330},
+    {'name': 'Granville', 'lat': 41.993664, 'lon': -87.659202, 'parent_stop_id': 40760},
+    {'name': 'Harrison', 'lat': 41.874039, 'lon': -87.627479, 'parent_stop_id': 41490},
+    {'name': 'Howard', 'lat': 42.019063, 'lon': -87.672892, 'parent_stop_id': 40900},
+    {'name': 'Jackson', 'lat': 41.878153, 'lon': -87.627596, 'parent_stop_id': 40560},
+    {'name': 'Jarvis', 'lat': 42.015876, 'lon': -87.669092, 'parent_stop_id': 41190},
+    {'name': 'Lake', 'lat': 41.884809, 'lon': -87.627813, 'parent_stop_id': 41660},
+    {'name': 'Lawrence', 'lat': 41.969139, 'lon': -87.658493, 'parent_stop_id': 40770},
+    {'name': 'Loyola', 'lat': 42.001073, 'lon': -87.661061, 'parent_stop_id': 41300},
+    {'name': 'Monroe', 'lat': 41.880745, 'lon': -87.627696, 'parent_stop_id': 41090},
+    {'name': 'Morse', 'lat': 42.008362, 'lon': -87.665909, 'parent_stop_id': 40100},
+    {'name': 'North/Clybourn', 'lat': 41.910655, 'lon': -87.649177, 'parent_stop_id': 40650},
+    {'name': 'Roosevelt', 'lat': 41.867405, 'lon': -87.62659, 'parent_stop_id': 41400},
+    {'name': 'Sheridan', 'lat': 41.953775, 'lon': -87.654929, 'parent_stop_id': 40080},
+    {'name': 'Sox-35th', 'lat': 41.831191, 'lon': -87.630636, 'parent_stop_id': 40190},
+    {'name': 'Thorndale', 'lat': 41.990259, 'lon': -87.659076, 'parent_stop_id': 40880},
+    {'name': 'Wilson', 'lat': 41.964273, 'lon': -87.657588, 'parent_stop_id': 40540}
 ]
 
-def fetch_train_data():
-    url = f"https://lapi.transitchicago.com/api/1.0/ttpositions.aspx?key={API_KEY}&rt=red&outputType=JSON"
-    response = requests.get(url)
-    return response.json() if response.status_code == 200 else None
-
 def get_train_locations():
-    data = fetch_train_data()
-    if data is None or 'ctatt' not in data or 'route' not in data['ctatt']:
-        print("Error fetching or parsing data")
-        return []
+    url = f"https://lapi.transitchicago.com/api/1.0/vehicle.aspx?key={API_KEY}&rt=Red&outputType=JSON"
+    response = requests.get(url)
+    data = response.json()
+    return data.get('ctatt', {}).get('vehicle', [])
 
-    # Get the current time
-    current_time = datetime.now()
+def find_nearest_station(train_lat, train_lon):
+    min_distance = float('inf')
+    nearest_station = None
+    for station in stations:
+        station_lat = station['lat']
+        station_lon = station['lon']
+        distance = great_circle((train_lat, train_lon), (station_lat, station_lon)).miles
+        if distance < min_distance:
+            min_distance = distance
+            nearest_station = station
+    return nearest_station
 
-    # List to store active train indicators
-    active_trains = []
+def display_train_locations():
+    trains = get_train_locations()
+    if not trains:
+        print("No train data available")
+        return
 
-    # Extract train locations
-    for route in data['ctatt']['route']:
-        for train in route['train']:
-            if 'arrT' not in train or 'nextStaId' not in train:
-                print(f"Missing data in train entry: {train}")
-                continue
-            
-            arrival_time = datetime.strptime(train['arrT'], "%Y-%m-%dT%H:%M:%S")
-            station_id = train['nextStaId']
+    for train in trains:
+        try:
+            train_lat = float(train['lat'])
+            train_lon = float(train['lon'])
+            nearest_station = find_nearest_station(train_lat, train_lon)
+            if nearest_station:
+                print(f"Train {train['rn']} is closest to station {nearest_station['name']} (Parent Stop ID: {nearest_station['parent_stop_id']})")
+            else:
+                print(f"Train {train['rn']} location is unknown")
+        except (KeyError, ValueError) as e:
+            print(f"Missing or invalid data in train entry: {train}")
 
-            # Check if the train is within a reasonable time frame
-            if arrival_time >= current_time:
-                active_trains.append(station_id)
-
-    return active_trains
-
-def display_train_locations(stations):
-    active_trains = get_train_locations()
-    
-    # Limit the number of active indicators to the number of unique trains
-    unique_stations = list(set(active_trains))
-    
-    print("Active train indicators:")
-    for station_id in unique_stations:
-        station_name = next((station['name'] for station in stations if station['mapid'] == station_id), f"Unknown {station_id}")
-        print(f"Train at {station_name}")
-
-# Run the function
-display_train_locations(stations)
+# Run the function to display train locations
+display_train_locations()
